@@ -1,6 +1,6 @@
 # M6T.Core.TupleModelBinder
-AsNetCore Tuple model binder
 
+This package contains code to match Json Post 
 
 # Usage
 Modify startup.cs like
@@ -14,5 +14,29 @@ public void ConfigureServices(IServiceCollection services)
   {
       options.ModelBinderProviders.Insert(0, new TupleModelBinderProvider());
   });
+}
+```
+Post request body 
+```json
+{
+  "user" : {
+    "Name":"Test",
+    "Surname":"Test2",
+    "Email":"example@example.com"
+  },
+  "someData" : "If you like it, you put a data on it"
+}
+```
+And in your controller use it like 
+```C#
+[HttpPost]
+public IActionResult CreateUser((User user, string someData) request)
+{
+    using (var db = new DBContext())
+    {
+        var newUser = db.Users.Add(request.user);
+        db.SaveChanges();
+        return Json(new { userId = request.user.Id, someData = request.someData});
+    }
 }
 ```
