@@ -1,7 +1,9 @@
 # M6T.Core.TupleModelBinder
 
-This package contains code to match Json Post 
+This package only works with named tuples and JSON post body!!!.
+What this package does is simply provide bindings for your controllers that maps incoming json data to tuple object at runtime. so you dont have to create a class for all of your actions in mvc.
 
+If you want to contribute just do it no rules. In fact some other incoming data formats and checking the request content type to bind them is very very wellcome :) 
 # Usage
 Modify startup.cs like
 ```C#
