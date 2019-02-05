@@ -4,7 +4,7 @@ AsNetCore Tuple model binder
 
 # Usage
 Modify startup.cs like
- `
+```C#
 using M6T.Core.TupleModelBinder;
 ....
 
@@ -15,4 +15,4 @@ public void ConfigureServices(IServiceCollection services)
       options.ModelBinderProviders.Insert(0, new TupleModelBinderProvider());
   });
 }
- `
+```
