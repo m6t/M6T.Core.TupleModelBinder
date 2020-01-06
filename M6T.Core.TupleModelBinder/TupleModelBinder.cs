@@ -49,20 +49,20 @@ namespace M6T.Core.TupleModelBinder
 #endif
 
             var modelAttributes = bindingContext.ModelMetadata.GetType().GetProperty("Attributes").GetValue(bindingContext.ModelMetadata) as ModelAttributes;
-            var tuplenames = modelAttributes.Attributes.FirstOrDefault(x => x.GetType() == typeof(System.Runtime.CompilerServices.TupleElementNamesAttribute));
-            if (tuplenames == null)
+            
+            var tupleAttr = modelAttributes.Attributes.OfType<System.Runtime.CompilerServices.TupleElementNamesAttribute>().FirstOrDefault();
+            if (tupleAttr == null)
             {
                 bindingContext.Result = ModelBindingResult.Failed();
                 return Task.CompletedTask;
             }
             else
             {
-                var names = (System.Runtime.CompilerServices.TupleElementNamesAttribute)tuplenames;
                 object tuple = Activator.CreateInstance(bindingContext.ModelType);
                 var tupleType = tuple.GetType();
                 int itemIndex = 1;
 
-                foreach (var name in names.TransformNames)
+                foreach (var name in tupleAttr.TransformNames)
                 {
                     var currentItemName = "Item" + itemIndex;
                     var field = tupleType.GetField(currentItemName);
@@ -86,6 +86,7 @@ namespace M6T.Core.TupleModelBinder
 
                     itemIndex++;
                 }
+
                 bindingContext.Result = ModelBindingResult.Success(tuple);
                 return Task.CompletedTask;
             }
