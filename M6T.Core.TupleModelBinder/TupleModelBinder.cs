@@ -42,8 +42,11 @@ namespace M6T.Core.TupleModelBinder
             var body = reader.ReadToEnd();
 
             var jobj = JObject.Parse(body);
+
+#if DEBUG
             (string username, string password) deneme = JsonConvert.DeserializeObject<(string username, string password)>(body);
             string asd = ((dynamic)jobj).username;
+#endif
 
             var modelAttributes = bindingContext.ModelMetadata.GetType().GetProperty("Attributes").GetValue(bindingContext.ModelMetadata) as ModelAttributes;
             var tuplenames = modelAttributes.Attributes.FirstOrDefault(x => x.GetType() == typeof(System.Runtime.CompilerServices.TupleElementNamesAttribute));
