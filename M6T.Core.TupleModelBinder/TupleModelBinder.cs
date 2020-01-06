@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
@@ -28,7 +29,7 @@ namespace M6T.Core.TupleModelBinder
 
     public class TupleModelBinder : IModelBinder
     {
-        public Task BindModelAsync(ModelBindingContext bindingContext)
+        public async Task BindModelAsync(ModelBindingContext bindingContext)
         {
             if (bindingContext == null)
             {
@@ -39,7 +40,7 @@ namespace M6T.Core.TupleModelBinder
 
             var reader = new StreamReader(bindingContext.HttpContext.Request.Body);
 
-            var body = reader.ReadToEnd();
+            var body = await reader.ReadToEndAsync();
 
             var jobj = JObject.Parse(body);
 
@@ -50,11 +51,11 @@ namespace M6T.Core.TupleModelBinder
 
             var modelAttributes = bindingContext.ModelMetadata.GetType().GetProperty("Attributes").GetValue(bindingContext.ModelMetadata) as ModelAttributes;
             
-            var tupleAttr = modelAttributes.Attributes.OfType<System.Runtime.CompilerServices.TupleElementNamesAttribute>().FirstOrDefault();
+            var tupleAttr = modelAttributes.Attributes.OfType<TupleElementNamesAttribute>().FirstOrDefault();
             if (tupleAttr == null)
             {
                 bindingContext.Result = ModelBindingResult.Failed();
-                return Task.CompletedTask;
+                return;
             }
             else
             {
@@ -88,7 +89,7 @@ namespace M6T.Core.TupleModelBinder
                 }
 
                 bindingContext.Result = ModelBindingResult.Success(tuple);
-                return Task.CompletedTask;
+                return;
             }
         }
     }
