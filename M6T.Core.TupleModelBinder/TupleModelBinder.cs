@@ -17,8 +17,10 @@ namespace M6T.Core.TupleModelBinder
             {
                 throw new ArgumentNullException(nameof(context));
             }
-            //Could be better ?
-            if (context.Metadata.ModelType.Name.StartsWith("ValueTuple"))
+
+            var modelType = context.Metadata.ModelType;
+
+            if (typeof(ITuple).IsAssignableFrom(modelType) && modelType.Name.StartsWith("ValueTuple"))
             {
                 return new BinderTypeModelBinder(typeof(TupleModelBinder));
             }
