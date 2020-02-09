@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
@@ -16,8 +17,10 @@ namespace M6T.Core.TupleModelBinder
             {
                 throw new ArgumentNullException(nameof(context));
             }
-            //Could be better ?
-            if (context.Metadata.ModelType.Name.StartsWith("ValueTuple"))
+
+            var modelType = context.Metadata.ModelType;
+
+            if (typeof(ITuple).IsAssignableFrom(modelType) && modelType.Name.StartsWith("ValueTuple"))
             {
                 return new BinderTypeModelBinder(typeof(TupleModelBinder));
             }
@@ -28,7 +31,7 @@ namespace M6T.Core.TupleModelBinder
 
     public class TupleModelBinder : IModelBinder
     {
-        public Task BindModelAsync(ModelBindingContext bindingContext)
+        public async Task BindModelAsync(ModelBindingContext bindingContext)
         {
             if (bindingContext == null)
             {
@@ -39,27 +42,30 @@ namespace M6T.Core.TupleModelBinder
 
             var reader = new StreamReader(bindingContext.HttpContext.Request.Body);
 
-            var body = reader.ReadToEnd();
+            var body = await reader.ReadToEndAsync();
 
             var jobj = JObject.Parse(body);
+
+#if DEBUG
             (string username, string password) deneme = JsonConvert.DeserializeObject<(string username, string password)>(body);
             string asd = ((dynamic)jobj).username;
+#endif
 
             var modelAttributes = bindingContext.ModelMetadata.GetType().GetProperty("Attributes").GetValue(bindingContext.ModelMetadata) as ModelAttributes;
-            var tuplenames = modelAttributes.Attributes.FirstOrDefault(x => x.GetType() == typeof(System.Runtime.CompilerServices.TupleElementNamesAttribute));
-            if (tuplenames == null)
+            
+            var tupleAttr = modelAttributes.Attributes.OfType<TupleElementNamesAttribute>().FirstOrDefault();
+            if (tupleAttr == null)
             {
                 bindingContext.Result = ModelBindingResult.Failed();
-                return Task.CompletedTask;
+                return;
             }
             else
             {
-                var names = (System.Runtime.CompilerServices.TupleElementNamesAttribute)tuplenames;
                 object tuple = Activator.CreateInstance(bindingContext.ModelType);
                 var tupleType = tuple.GetType();
                 int itemIndex = 1;
 
-                foreach (var name in names.TransformNames)
+                foreach (var name in tupleAttr.TransformNames)
                 {
                     var currentItemName = "Item" + itemIndex;
                     var field = tupleType.GetField(currentItemName);
@@ -83,8 +89,9 @@ namespace M6T.Core.TupleModelBinder
 
                     itemIndex++;
                 }
+
                 bindingContext.Result = ModelBindingResult.Success(tuple);
-                return Task.CompletedTask;
+                return;
             }
         }
     }
