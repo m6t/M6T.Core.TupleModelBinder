@@ -44,15 +44,8 @@ namespace M6T.Core.TupleModelBinder
 
             var body = await reader.ReadToEndAsync();
 
-            var jobj = JObject.Parse(body);
-
-#if DEBUG
-            (string username, string password) deneme = JsonConvert.DeserializeObject<(string username, string password)>(body);
-            string asd = ((dynamic)jobj).username;
-#endif
-
             var modelAttributes = bindingContext.ModelMetadata.GetType().GetProperty("Attributes").GetValue(bindingContext.ModelMetadata) as ModelAttributes;
-            
+
             var tupleAttr = modelAttributes.Attributes.OfType<TupleElementNamesAttribute>().FirstOrDefault();
             if (tupleAttr == null)
             {
@@ -61,38 +54,58 @@ namespace M6T.Core.TupleModelBinder
             }
             else
             {
-                object tuple = Activator.CreateInstance(bindingContext.ModelType);
-                var tupleType = tuple.GetType();
-                int itemIndex = 1;
-
-                foreach (var name in tupleAttr.TransformNames)
-                {
-                    var currentItemName = "Item" + itemIndex;
-                    var field = tupleType.GetField(currentItemName);
-                    if (field.FieldType.IsPrimitive || field.FieldType == typeof(string) || field.FieldType == typeof(decimal))
-                    {
-                        field.SetValue(tuple, Convert.ChangeType(jobj[name], field.FieldType));
-                    }
-                    else
-                    {
-                        var obj = jobj[name];
-                        if (obj == null)
-                        {
-                            field.SetValue(tuple, Convert.ChangeType(jobj[name], field.FieldType));
-                        }
-                        else // is a class maybe ?
-                        {
-                            var json = obj.ToString();
-                            field.SetValue(tuple, JsonConvert.DeserializeObject(json, field.FieldType));
-                        }
-                    }
-
-                    itemIndex++;
-                }
-
+                var tupleType = bindingContext.ModelType;
+                object tuple = ParseTupleFromModelAttributes(body, tupleAttr, tupleType);
                 bindingContext.Result = ModelBindingResult.Success(tuple);
                 return;
             }
+        }
+
+        public static object ParseTupleFromModelAttributes(string body, TupleElementNamesAttribute tupleAttr, Type tupleType)
+        {
+            object tuple = Activator.CreateInstance(tupleType);
+            int itemIndex = 1;
+            var jobj = JObject.Parse(body);
+            foreach (var name in tupleAttr.TransformNames)
+            {
+                var currentItemName = "Item" + itemIndex;
+                var field = tupleType.GetField(currentItemName);
+                if (field.FieldType.IsPrimitive || field.FieldType == typeof(string) || field.FieldType == typeof(decimal))
+                {
+                    var data = jobj[name];
+                    if (((JToken)data).Type == JTokenType.Null && IsNullable(field.FieldType))
+                    {
+                        field.SetValue(tuple, null);
+                    }
+                    else
+                    {
+                        field.SetValue(tuple, Convert.ChangeType(data, field.FieldType));
+                    }
+                }
+                else
+                {
+                    var data = jobj[name];
+                    if (data == null)
+                    {
+                        field.SetValue(tuple, null);
+                    }
+                    else // is a class maybe ?
+                    {
+                        var json = data.ToString();
+                        field.SetValue(tuple, JsonConvert.DeserializeObject(json, field.FieldType));
+                    }
+                }
+                itemIndex++;
+            }
+
+            return tuple;
+        }
+
+        static bool IsNullable(Type type)
+        {
+            if (!type.IsValueType) return true; // ref-type
+            if (Nullable.GetUnderlyingType(type) != null) return true; // Nullable<T>
+            return false; // value-type
         }
     }
 }
