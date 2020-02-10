@@ -9,12 +9,20 @@
     <RepositoryUrl>https://github.com/m6t/M6T.Core.TupleModelBinder</RepositoryUrl>
     <PackageProjectUrl>https://github.com/m6t/M6T.Core.TupleModelBinder</PackageProjectUrl>
     <PackageId>M6T.Core.TupleModelBinder</PackageId>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
   </PropertyGroup>
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\LICENSE">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>
