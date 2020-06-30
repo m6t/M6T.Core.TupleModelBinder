@@ -1,12 +1,13 @@
-﻿using System;
-using System.IO;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
+﻿using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 namespace M6T.Core.TupleModelBinder
 {
     public class TupleModelBinderProvider : IModelBinderProvider
@@ -63,42 +64,34 @@ namespace M6T.Core.TupleModelBinder
 
         public static object ParseTupleFromModelAttributes(string body, TupleElementNamesAttribute tupleAttr, Type tupleType)
         {
-            object tuple = Activator.CreateInstance(tupleType);
-            int itemIndex = 1;
             var jobj = JObject.Parse(body);
-            foreach (var name in tupleAttr.TransformNames)
-            {
-                var currentItemName = "Item" + itemIndex;
-                var field = tupleType.GetField(currentItemName);
-                if (field.FieldType.IsPrimitive || field.FieldType == typeof(string) || field.FieldType == typeof(decimal))
-                {
-                    var data = jobj[name];
-                    if (((JToken)data).Type == JTokenType.Null && IsNullable(field.FieldType))
-                    {
-                        field.SetValue(tuple, null);
-                    }
-                    else
-                    {
-                        field.SetValue(tuple, Convert.ChangeType(data, field.FieldType));
-                    }
-                }
-                else
-                {
-                    var data = jobj[name];
-                    if (data == null)
-                    {
-                        field.SetValue(tuple, null);
-                    }
-                    else // is a class maybe ?
-                    {
-                        var json = data.ToString();
-                        field.SetValue(tuple, JsonConvert.DeserializeObject(json, field.FieldType));
-                    }
-                }
-                itemIndex++;
-            }
+            var parameters = tupleAttr.TransformNames.Zip(tupleType.GetConstructors()
+                    .Single()
+                    .GetParameters())
+                .Select(x => GetValue(jobj, x.First, x.Second))
+                .ToArray();
+
+            object tuple = Activator.CreateInstance(tupleType, parameters);
 
             return tuple;
+        }
+
+        static object GetValue(JObject jobject, string name, ParameterInfo info)
+        {
+            var value = jobject.GetValue(name, StringComparison.CurrentCultureIgnoreCase);
+
+            if (value == null || value.Type == JTokenType.Null)
+            {
+                if (IsNullable(info.ParameterType))
+                    return Convert.ChangeType(null, info.ParameterType);
+                else
+                    return Activator.CreateInstance(info.ParameterType); //default value
+            }
+
+            if (info.ParameterType.IsPrimitive || info.ParameterType == typeof(string) || info.ParameterType == typeof(decimal))
+                return Convert.ChangeType(value, info.ParameterType);
+            else
+                return Convert.ChangeType(JsonConvert.DeserializeObject(value.ToString(), info.ParameterType), info.ParameterType);
         }
 
         static bool IsNullable(Type type)

@@ -1,6 +1,7 @@
 using M6T.Core.TupleModelBinder;
 using System;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using Xunit;
 
 namespace ModelBinderTests
@@ -60,12 +61,39 @@ namespace ModelBinderTests
             Assert.Null(result.ComplexNullCheck);
             Assert.True(result.BooleanCheck);
         }
+
+        [Fact]
+        public void TestNullHandling() {
+            var type = typeof(NullMemberTestData);
+            var prop = type.GetProperty("Value");
+            var tupleType = prop.PropertyType;
+
+            string body = @"
+                            {
+                              ""SomeData"" : ""Test String Root"",
+                            }";
+
+            var tupleElementNames = (TupleElementNamesAttribute)prop.GetCustomAttributes(typeof(TupleElementNamesAttribute), true)[0];
+
+            var result =
+                ((string SomeData, string NullCheck, bool BooleanNullCheck, TestUserClass ComplexNullCheck))
+                TupleModelBinder.ParseTupleFromModelAttributes(body, tupleElementNames, tupleType);
+
+            Assert.Equal("Test String Root", result.SomeData);
+            Assert.Null(result.NullCheck);
+            Assert.Null(result.ComplexNullCheck);
+            Assert.False(result.BooleanNullCheck); //boolean not accept null
+        }
     }
 
 
     public class TupleMemberTestData
     {
         public (TestUserClass User, string SomeData, string NullCheck, bool BooleanCheck, TestUserClass ComplexNullCheck) Value { get; set; }
+    }
+
+    public class NullMemberTestData {
+        public (string SomeData, string NullCheck, bool BooleanNullCheck, TestUserClass ComplexNullCheck) Value { get; set; }
     }
 
     public class TestUserClass
