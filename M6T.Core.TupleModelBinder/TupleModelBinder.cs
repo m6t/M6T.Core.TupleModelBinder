@@ -73,7 +73,7 @@ namespace M6T.Core.TupleModelBinder
                 if (field.FieldType.IsPrimitive || field.FieldType == typeof(string) || field.FieldType == typeof(decimal))
                 {
                     var data = jobj[name];
-                    if (data == null || (((JToken)data).Type == JTokenType.Null && IsNullable(field.FieldType)))
+                    if (((JToken)data).Type == JTokenType.Null && IsNullable(field.FieldType))
                     {
                         field.SetValue(tuple, null);
                     }
