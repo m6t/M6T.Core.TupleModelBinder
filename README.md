@@ -7,10 +7,10 @@ If you want to contribute just do it no rules. In fact some other incoming data 
 ## Installation
 ```NuGet
 //Nuget
-Install-Package M6T.Core.TupleModelBinder -Version 1.0.0
+Install-Package M6T.Core.TupleModelBinder
 
 //dotnet cli
-dotnet add package M6T.Core.TupleModelBinder --version 1.0.0
+dotnet add package M6T.Core.TupleModelBinder 
 ```
 # Usage
 Modify startup.cs like
