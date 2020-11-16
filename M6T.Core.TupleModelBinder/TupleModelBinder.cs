@@ -88,6 +88,17 @@ namespace M6T.Core.TupleModelBinder
                     return Activator.CreateInstance(info.ParameterType); //default value
             }
 
+            /*
+             *  If parameter type is guid, special handling is required since NewtonSoft.Json doesnt handle it correctly for some reason.
+             *  If there is another possible input type besides string for guid please add it. 
+             *  This currently supports all Guid format types stated in
+             *  https://docs.microsoft.com/en-us/dotnet/api/system.guid.tostring?view=net-5.0
+             */
+            if (info.ParameterType == typeof(Guid) && value.Type == JTokenType.String)
+            {
+                return Guid.Parse(value.ToString());
+            }
+
             if (info.ParameterType.IsPrimitive || info.ParameterType == typeof(string) || info.ParameterType == typeof(decimal))
                 return Convert.ChangeType(value, info.ParameterType);
             else

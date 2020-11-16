@@ -1,5 +1,6 @@
 using M6T.Core.TupleModelBinder;
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Xunit;
@@ -63,7 +64,8 @@ namespace ModelBinderTests
         }
 
         [Fact]
-        public void TestNullHandling() {
+        public void TestNullHandling()
+        {
             var type = typeof(NullMemberTestData);
             var prop = type.GetProperty("Value");
             var tupleType = prop.PropertyType;
@@ -84,6 +86,49 @@ namespace ModelBinderTests
             Assert.Null(result.ComplexNullCheck);
             Assert.False(result.BooleanNullCheck); //boolean not accept null
         }
+
+        /// <summary>
+        /// Tests all possible guid formats as input
+        /// </summary>
+        [Fact]
+        public void TestGuidHandling()
+        {
+            var type = typeof(GuidMemberTestData);
+            var prop = type.GetProperty("Value");
+            var tupleType = prop.PropertyType;
+            var testGuid = Guid.Parse("728cb7a1-b8eb-471e-a90d-f17531baf918");
+
+            List<string> guidFormattingTypes = new List<string>() {
+                "N", //00000000000000000000000000000000
+                "D", //00000000-0000-0000-0000-000000000000
+                "B", //{00000000-0000-0000-0000-000000000000}
+                "P", //(00000000-0000-0000-0000-000000000000)
+                "X" //{0x00000000,0x0000,0x0000,{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}}
+            };
+
+            foreach (var guidFormat in guidFormattingTypes)
+            {
+                string expectedGuid = testGuid.ToString(guidFormat);
+                string body = @"{""clientId"":""" + expectedGuid + @""",""name"":""Name1"",""email"":""email@email.com""}";
+
+                var tupleElementNames = (TupleElementNamesAttribute)prop.GetCustomAttributes(typeof(TupleElementNamesAttribute), true)[0];
+
+                var result =
+                    ((Guid clientId, string name, string email, string NullCheck, bool BooleanNullCheck, TestUserClass ComplexNullCheck))
+                    TupleModelBinder.ParseTupleFromModelAttributes(body, tupleElementNames, tupleType);
+
+                var resultGuid = result.clientId.ToString(guidFormat);
+                Assert.Equal(expectedGuid, resultGuid);
+                Assert.Equal("Name1", result.name);
+                Assert.Equal("email@email.com", result.email);
+
+                Assert.Null(result.NullCheck);
+                Assert.Null(result.ComplexNullCheck);
+                Assert.False(result.BooleanNullCheck);
+            }
+
+
+        }
     }
 
 
@@ -92,8 +137,14 @@ namespace ModelBinderTests
         public (TestUserClass User, string SomeData, string NullCheck, bool BooleanCheck, TestUserClass ComplexNullCheck) Value { get; set; }
     }
 
-    public class NullMemberTestData {
+    public class NullMemberTestData
+    {
         public (string SomeData, string NullCheck, bool BooleanNullCheck, TestUserClass ComplexNullCheck) Value { get; set; }
+    }
+
+    public class GuidMemberTestData
+    {
+        public (Guid clientId, string name, string email, string NullCheck, bool BooleanNullCheck, TestUserClass ComplexNullCheck) Value { get; set; }
     }
 
     public class TestUserClass
