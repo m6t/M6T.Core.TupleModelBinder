@@ -39,7 +39,7 @@ namespace M6T.Core.TupleModelBinder
                 throw new ArgumentNullException(nameof(bindingContext));
             }
 
-            var modelName = bindingContext.ModelName;
+            //var modelName = bindingContext.ModelName;
 
             var reader = new StreamReader(bindingContext.HttpContext.Request.Body);
 
@@ -51,14 +51,12 @@ namespace M6T.Core.TupleModelBinder
             if (tupleAttr == null)
             {
                 bindingContext.Result = ModelBindingResult.Failed();
-                return;
             }
             else
             {
                 var tupleType = bindingContext.ModelType;
                 object tuple = ParseTupleFromModelAttributes(body, tupleAttr, tupleType);
                 bindingContext.Result = ModelBindingResult.Success(tuple);
-                return;
             }
         }
 
