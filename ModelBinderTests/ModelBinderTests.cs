@@ -73,15 +73,17 @@ namespace ModelBinderTests
             string body = @"
                             {
                               ""SomeData"" : ""Test String Root"",
+                              ""SomeNullData"":null
                             }";
 
             var tupleElementNames = (TupleElementNamesAttribute)prop.GetCustomAttributes(typeof(TupleElementNamesAttribute), true)[0];
 
             var result =
-                ((string SomeData, string NullCheck, bool BooleanNullCheck, TestUserClass ComplexNullCheck))
+                ((string SomeData, string SomeNullData, string NullCheck, bool BooleanNullCheck, TestUserClass ComplexNullCheck))
                 TupleModelBinder.ParseTupleFromModelAttributes(body, tupleElementNames, tupleType);
 
             Assert.Equal("Test String Root", result.SomeData);
+            Assert.Null(result.SomeNullData);
             Assert.Null(result.NullCheck);
             Assert.Null(result.ComplexNullCheck);
             Assert.False(result.BooleanNullCheck); //boolean not accept null
@@ -139,7 +141,7 @@ namespace ModelBinderTests
 
     public class NullMemberTestData
     {
-        public (string SomeData, string NullCheck, bool BooleanNullCheck, TestUserClass ComplexNullCheck) Value { get; set; }
+        public (string SomeData, string SomeNullData, string NullCheck, bool BooleanNullCheck, TestUserClass ComplexNullCheck) Value { get; set; }
     }
 
     public class GuidMemberTestData
