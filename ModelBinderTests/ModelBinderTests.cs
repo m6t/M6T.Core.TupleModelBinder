@@ -1,4 +1,5 @@
 using M6T.Core.TupleModelBinder;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -45,11 +46,13 @@ namespace ModelBinderTests
                             }";
 
 
+            int parameterIndex = 0;
+            var jobj = JObject.Parse(body);
             var tupleElementNames = (TupleElementNamesAttribute)prop.GetCustomAttributes(typeof(TupleElementNamesAttribute), true)[0];
 
             var result =
                 ((TestUserClass User, string SomeData, string NullCheck, bool BooleanCheck, TestUserClass ComplexNullCheck))
-                TupleModelBinder.ParseTupleFromModelAttributes(body, tupleElementNames, tupleType);
+                TupleModelBinder.ParseTupleFromModelAttributes(jobj, tupleElementNames.TransformNames, tupleType, ref parameterIndex);
 
             Assert.NotNull(result.User);
             Assert.Equal("Test", result.User.String);
@@ -76,11 +79,13 @@ namespace ModelBinderTests
                               ""SomeNullData"":null
                             }";
 
+            int parameterIndex = 0;
+            var jobj = JObject.Parse(body);
             var tupleElementNames = (TupleElementNamesAttribute)prop.GetCustomAttributes(typeof(TupleElementNamesAttribute), true)[0];
 
             var result =
                 ((string SomeData, string SomeNullData, string NullCheck, bool BooleanNullCheck, TestUserClass ComplexNullCheck))
-                TupleModelBinder.ParseTupleFromModelAttributes(body, tupleElementNames, tupleType);
+                TupleModelBinder.ParseTupleFromModelAttributes(jobj, tupleElementNames.TransformNames, tupleType, ref parameterIndex);
 
             Assert.Equal("Test String Root", result.SomeData);
             Assert.Null(result.SomeNullData);
@@ -113,11 +118,13 @@ namespace ModelBinderTests
                 string expectedGuid = testGuid.ToString(guidFormat);
                 string body = @"{""clientId"":""" + expectedGuid + @""",""name"":""Name1"",""email"":""email@email.com""}";
 
+                int parameterIndex = 0;
+                var jobj = JObject.Parse(body);
                 var tupleElementNames = (TupleElementNamesAttribute)prop.GetCustomAttributes(typeof(TupleElementNamesAttribute), true)[0];
 
                 var result =
                     ((Guid clientId, string name, string email, string NullCheck, bool BooleanNullCheck, TestUserClass ComplexNullCheck))
-                    TupleModelBinder.ParseTupleFromModelAttributes(body, tupleElementNames, tupleType);
+                    TupleModelBinder.ParseTupleFromModelAttributes(jobj, tupleElementNames.TransformNames, tupleType, ref parameterIndex);
 
                 var resultGuid = result.clientId.ToString(guidFormat);
                 Assert.Equal(expectedGuid, resultGuid);

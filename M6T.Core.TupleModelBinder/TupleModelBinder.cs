@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -32,6 +33,17 @@ namespace M6T.Core.TupleModelBinder
 
     public class TupleModelBinder : IModelBinder
     {
+        private static readonly Type[] VALUE_TUPLE_TYPES = new[] {
+            typeof(ValueTuple<>),
+            typeof(ValueTuple<,>),
+            typeof(ValueTuple<,,>),
+            typeof(ValueTuple<,,,>),
+            typeof(ValueTuple<,,,,>),
+            typeof(ValueTuple<,,,,,>),
+            typeof(ValueTuple<,,,,,,>),
+            typeof(ValueTuple<,,,,,,,>),
+        };
+
         public async Task BindModelAsync(ModelBindingContext bindingContext)
         {
             if (bindingContext == null)
@@ -52,23 +64,34 @@ namespace M6T.Core.TupleModelBinder
                 return;
             }
 
-            var tupleType = bindingContext.ModelType;
-            object tuple = ParseTupleFromModelAttributes(body, tupleAttr, tupleType);
+            var jobj = JObject.Parse(body);
+            int parameterIndex = 0;
+            object tuple = ParseTupleFromModelAttributes(jobj, tupleAttr.TransformNames, bindingContext.ModelType, ref parameterIndex);
+
             bindingContext.Result = ModelBindingResult.Success(tuple);
         }
 
-        public static object ParseTupleFromModelAttributes(string body, TupleElementNamesAttribute tupleAttr, Type tupleType)
+        public static object ParseTupleFromModelAttributes(JObject jobject, IList<string> parameterNames, Type parameterType, ref int parameterIndex)
         {
-            var jobj = JObject.Parse(body);
-            var parameters = tupleAttr.TransformNames.Zip(tupleType.GetConstructors()
-                    .Single()
-                    .GetParameters())
-                .Select(x => GetValue(jobj, x.First, x.Second.ParameterType))
-                .ToArray();
+            if (parameterType.GenericTypeArguments.Length > VALUE_TUPLE_TYPES.Length)
+                throw new InvalidOperationException($"Cannot bind model of ValueTuple with more than {VALUE_TUPLE_TYPES.Length} generic type arguments.");
 
-            object tuple = Activator.CreateInstance(tupleType, parameters);
-
-            return tuple;
+            bool isNestedValueTuple = parameterType.GenericTypeArguments.Length == VALUE_TUPLE_TYPES.Length;
+            int numSimpleGenericTypeArgs = Math.Min(VALUE_TUPLE_TYPES.Length - 1, parameterType.GenericTypeArguments.Length);
+            object[] parameters = new object[parameterType.GenericTypeArguments.Length];
+            for (int a = 0; a < numSimpleGenericTypeArgs; ++a)
+            {
+                parameters[a] = GetValue(jobject, parameterNames[parameterIndex], parameterType.GenericTypeArguments[a]);
+                ++parameterIndex;
+            }
+            if (isNestedValueTuple)
+            {
+                Type nestedValueTupleType = parameterType.GenericTypeArguments[VALUE_TUPLE_TYPES.Length - 1];
+                parameters[VALUE_TUPLE_TYPES.Length - 1] = ParseTupleFromModelAttributes(jobject, parameterNames, nestedValueTupleType, ref parameterIndex);
+            }
+            Type genericValueTupleType = VALUE_TUPLE_TYPES[parameterType.GenericTypeArguments.Length - 1];
+            Type concreteValueTupleType = genericValueTupleType.MakeGenericType(parameterType.GenericTypeArguments);
+            return Activator.CreateInstance(concreteValueTupleType, parameters);
         }
 
         static object GetValue(JObject jobject, string name, Type parameterType)
