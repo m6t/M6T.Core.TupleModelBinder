@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -39,8 +39,6 @@ namespace M6T.Core.TupleModelBinder
                 throw new ArgumentNullException(nameof(bindingContext));
             }
 
-            //var modelName = bindingContext.ModelName;
-
             var reader = new StreamReader(bindingContext.HttpContext.Request.Body);
 
             var body = await reader.ReadToEndAsync();
@@ -51,13 +49,12 @@ namespace M6T.Core.TupleModelBinder
             if (tupleAttr == null)
             {
                 bindingContext.Result = ModelBindingResult.Failed();
+                return;
             }
-            else
-            {
-                var tupleType = bindingContext.ModelType;
-                object tuple = ParseTupleFromModelAttributes(body, tupleAttr, tupleType);
-                bindingContext.Result = ModelBindingResult.Success(tuple);
-            }
+
+            var tupleType = bindingContext.ModelType;
+            object tuple = ParseTupleFromModelAttributes(body, tupleAttr, tupleType);
+            bindingContext.Result = ModelBindingResult.Success(tuple);
         }
 
         public static object ParseTupleFromModelAttributes(string body, TupleElementNamesAttribute tupleAttr, Type tupleType)
@@ -66,7 +63,7 @@ namespace M6T.Core.TupleModelBinder
             var parameters = tupleAttr.TransformNames.Zip(tupleType.GetConstructors()
                     .Single()
                     .GetParameters())
-                .Select(x => GetValue(jobj, x.First, x.Second))
+                .Select(x => GetValue(jobj, x.First, x.Second.ParameterType))
                 .ToArray();
 
             object tuple = Activator.CreateInstance(tupleType, parameters);
@@ -74,16 +71,16 @@ namespace M6T.Core.TupleModelBinder
             return tuple;
         }
 
-        static object GetValue(JObject jobject, string name, ParameterInfo info)
+        static object GetValue(JObject jobject, string name, Type parameterType)
         {
             var value = jobject.GetValue(name, StringComparison.CurrentCultureIgnoreCase);
 
             if (value == null || value.Type == JTokenType.Null)
             {
-                if (IsNullable(info.ParameterType))
-                    return Convert.ChangeType(null, info.ParameterType);
+                if (IsNullable(parameterType))
+                    return Convert.ChangeType(null, parameterType);
                 else
-                    return Activator.CreateInstance(info.ParameterType); //default value
+                    return Activator.CreateInstance(parameterType); //default value
             }
 
             /*
@@ -92,15 +89,15 @@ namespace M6T.Core.TupleModelBinder
              *  This currently supports all Guid format types stated in
              *  https://docs.microsoft.com/en-us/dotnet/api/system.guid.tostring?view=net-5.0
              */
-            if (info.ParameterType == typeof(Guid) && value.Type == JTokenType.String)
+            if (parameterType == typeof(Guid) && value.Type == JTokenType.String)
             {
                 return Guid.Parse(value.ToString());
             }
 
-            if (info.ParameterType.IsPrimitive || info.ParameterType == typeof(string) || info.ParameterType == typeof(decimal))
-                return Convert.ChangeType(value, info.ParameterType);
+            if (parameterType.IsPrimitive || parameterType == typeof(string) || parameterType == typeof(decimal))
+                return Convert.ChangeType(value, parameterType);
             else
-                return Convert.ChangeType(JsonConvert.DeserializeObject(value.ToString(), info.ParameterType), info.ParameterType);
+                return Convert.ChangeType(JsonConvert.DeserializeObject(value.ToString(), parameterType), parameterType);
         }
 
         static bool IsNullable(Type type)
