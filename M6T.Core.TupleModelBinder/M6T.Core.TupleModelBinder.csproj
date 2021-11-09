@@ -3,13 +3,14 @@
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Version>1.3.0</Version>
+    <Version>1.4.0</Version>
     <Company>M6T</Company>
     <Authors>Alper Tokcan</Authors>
     <RepositoryUrl>https://github.com/m6t/M6T.Core.TupleModelBinder</RepositoryUrl>
     <PackageProjectUrl>https://github.com/m6t/M6T.Core.TupleModelBinder</PackageProjectUrl>
     <PackageId>M6T.Core.TupleModelBinder</PackageId>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <AssemblyVersion>1.4.0.0</AssemblyVersion>
   </PropertyGroup>
 
   <ItemGroup>
