@@ -1,4 +1,5 @@
 using M6T.Core.TupleModelBinder;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -45,11 +46,13 @@ namespace ModelBinderTests
                             }";
 
 
+            int parameterIndex = 0;
+            var jobj = JObject.Parse(body);
             var tupleElementNames = (TupleElementNamesAttribute)prop.GetCustomAttributes(typeof(TupleElementNamesAttribute), true)[0];
 
             var result =
                 ((TestUserClass User, string SomeData, string NullCheck, bool BooleanCheck, TestUserClass ComplexNullCheck))
-                TupleModelBinder.ParseTupleFromModelAttributes(body, tupleElementNames, tupleType);
+                TupleModelBinder.ParseTupleFromModelAttributes(jobj, tupleElementNames.TransformNames, tupleType, ref parameterIndex);
 
             Assert.NotNull(result.User);
             Assert.Equal("Test", result.User.String);
@@ -61,6 +64,54 @@ namespace ModelBinderTests
             Assert.Null(result.NullCheck);
             Assert.Null(result.ComplexNullCheck);
             Assert.True(result.BooleanCheck);
+        }
+
+        [Fact]
+        public void TestNestedTupleModelBinder()
+        {
+            var type = typeof(NestedTupleMemberTestData);
+            var prop = type.GetProperty("Value");
+            var tupleType = prop.PropertyType;
+            string body = @"
+                            {
+                              ""User"" : {
+                                ""String"":""Test"",
+                                ""Integer"":444,
+                                ""Double"": 1.44,
+                                ""Decimal"": 1.44
+                              },
+                              ""SomeData"" : ""Test String Root"",
+                              ""NullCheck"": null,
+                              ""BooleanCheck"": true,
+                              ""ComplexNullCheck"":null,
+                              ""IntParam6"": 6,
+                              ""IntParam7"": 7,
+                              ""IntParam8"": 8,
+                              ""IntParam9"": 9,
+                            }";
+
+            int parameterIndex = 0;
+            var jobj = JObject.Parse(body);
+            var tupleElementNames = (TupleElementNamesAttribute)prop.GetCustomAttributes(typeof(TupleElementNamesAttribute), true)[0];
+
+            var result =
+                ((TestUserClass User, string SomeData, string NullCheck, bool BooleanCheck, TestUserClass ComplexNullCheck, int IntParam6, int IntParam7, int IntParam8, int IntParam9))
+                TupleModelBinder.ParseTupleFromModelAttributes(jobj, tupleElementNames.TransformNames, tupleType, ref parameterIndex);
+
+            Assert.NotNull(result.User);
+            Assert.Equal("Test", result.User.String);
+            Assert.Equal(444, result.User.Integer);
+            Assert.Equal(1.44d, result.User.Double);
+            Assert.Equal(1.44m, result.User.Decimal);
+
+            Assert.Equal("Test String Root", result.SomeData);
+            Assert.Null(result.NullCheck);
+            Assert.Null(result.ComplexNullCheck);
+            Assert.True(result.BooleanCheck);
+            Assert.Equal(6, result.IntParam6);
+            Assert.Equal(7, result.IntParam7);
+            Assert.Equal(8, result.IntParam8);
+            Assert.Equal(9, result.IntParam9);
         }
 
         [Fact]
@@ -76,11 +127,13 @@ namespace ModelBinderTests
                               ""SomeNullData"":null
                             }";
 
+            int parameterIndex = 0;
+            var jobj = JObject.Parse(body);
             var tupleElementNames = (TupleElementNamesAttribute)prop.GetCustomAttributes(typeof(TupleElementNamesAttribute), true)[0];
 
             var result =
                 ((string SomeData, string SomeNullData, string NullCheck, bool BooleanNullCheck, TestUserClass ComplexNullCheck))
-                TupleModelBinder.ParseTupleFromModelAttributes(body, tupleElementNames, tupleType);
+                TupleModelBinder.ParseTupleFromModelAttributes(jobj, tupleElementNames.TransformNames, tupleType, ref parameterIndex);
 
             Assert.Equal("Test String Root", result.SomeData);
             Assert.Null(result.SomeNullData);
@@ -113,11 +166,13 @@ namespace ModelBinderTests
                 string expectedGuid = testGuid.ToString(guidFormat);
                 string body = @"{""clientId"":""" + expectedGuid + @""",""name"":""Name1"",""email"":""email@email.com""}";
 
+                int parameterIndex = 0;
+                var jobj = JObject.Parse(body);
                 var tupleElementNames = (TupleElementNamesAttribute)prop.GetCustomAttributes(typeof(TupleElementNamesAttribute), true)[0];
 
                 var result =
                     ((Guid clientId, string name, string email, string NullCheck, bool BooleanNullCheck, TestUserClass ComplexNullCheck))
-                    TupleModelBinder.ParseTupleFromModelAttributes(body, tupleElementNames, tupleType);
+                    TupleModelBinder.ParseTupleFromModelAttributes(jobj, tupleElementNames.TransformNames, tupleType, ref parameterIndex);
 
                 var resultGuid = result.clientId.ToString(guidFormat);
                 Assert.Equal(expectedGuid, resultGuid);
@@ -137,6 +192,11 @@ namespace ModelBinderTests
     public class TupleMemberTestData
     {
         public (TestUserClass User, string SomeData, string NullCheck, bool BooleanCheck, TestUserClass ComplexNullCheck) Value { get; set; }
+    }
+
+    public class NestedTupleMemberTestData
+    {
+        public (TestUserClass User, string SomeData, string NullCheck, bool BooleanCheck, TestUserClass ComplexNullCheck, int IntParam6, int IntParam7, int IntParam8, int IntParam9) Value { get; set; }
     }
 
     public class NullMemberTestData
